@@ -43,3 +43,17 @@ def test_no_usage() -> None:
         result = runner.invoke(app, [tmpdir, "os.path", "join"])
         assert result.exit_code == 1
         assert "No usage" in result.output
+
+def test_runtime_tracing_detects_transitive_import() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        script_path = os.path.join(tmpdir, "uses_requests.py")
+        script_content = """
+import requests
+requests.get("https://example.com/path?query=1")
+"""
+        write_script(script_path, script_content)
+
+        result = runner.invoke(app, [script_path, "urllib.parse", "urlparse", "--runtime"])
+        print(result.output)
+        assert result.exit_code == 0
+        assert "urllib.parse.urlparse" in result.output

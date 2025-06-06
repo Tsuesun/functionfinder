@@ -64,7 +64,7 @@ functionfinder/
 ## ✅ Roadmap
 
 - [x] Direct function usage detection
-- [ ] Transitive usage detection via runtime tracing
+- [x] Transitive usage detection via runtime tracing
 - [ ] Support for multiple functions/modules at once
 - [ ] JSON output for integration with tooling
 - [ ] Optional ignore list (e.g., skip test files)

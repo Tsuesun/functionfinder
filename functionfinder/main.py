@@ -1,9 +1,36 @@
-import os
 import ast
+import os
+import sys
+from types import FrameType
+from typing import Dict, List, Optional, Set
+
 import typer
-from typing import Set, Dict, List, Optional
 
 app = typer.Typer()
+
+def run_with_trace(filepath: str) -> Set[str]:
+    """Trace the execution of the given script and collect called functions."""
+    traced_functions: Set[str] = set()
+
+    def tracer(frame: FrameType, event: str, arg: Optional[object]) -> Optional[object]:
+        if event == "call":
+            code = frame.f_code
+            module = frame.f_globals.get("__name__")
+            func_name = code.co_name
+            if module and func_name:
+                traced_functions.add(f"{module}.{func_name}")
+        return tracer
+
+    sys.setprofile(tracer)
+    try:
+        with open(filepath) as f:
+            code = compile(f.read(), filepath, 'exec')
+            globals_dict = {"__name__": "__main__"}
+            exec(code, globals_dict)
+    finally:
+        sys.setprofile(None)
+
+    return traced_functions
 
 def find_function_usage_in_file(
     filepath: str,
@@ -57,7 +84,9 @@ def find_function_usage_in_file(
 
         return full_call == target_full
 
-    def calls_target_or_transitive(func_node: ast.FunctionDef, call_stack: Optional[Set[str]] = None) -> bool:
+    def calls_target_or_transitive(
+        func_node: ast.FunctionDef, call_stack: Optional[Set[str]] = None
+    ) -> bool:
         if call_stack is None:
             call_stack = set()
         if func_node.name in call_stack:
@@ -111,9 +140,12 @@ def check_usage(
     path: str = typer.Argument(..., help="Directory or file path to scan"),
     module: str = typer.Argument(..., help="Module name e.g. 'os.path'"),
     function: str = typer.Argument(..., help="Function name e.g. 'join'"),
+    runtime: bool = typer.Option(False, "--runtime", help="Use runtime tracing")
 ) -> None:
+
     """
-    Check whether Python files under PATH use FUNCTION from MODULE, directly or transitively.
+    Check whether Python files under PATH use FUNCTION from MODULE, directly or
+    transitively.
     """
     matches: List[str] = []
     if os.path.isfile(path):
@@ -127,8 +159,13 @@ def check_usage(
 
     for file in files_to_check:
         try:
-            if find_function_usage_in_file(file, module, function):
-                matches.append(file)
+            if runtime:
+                called_funcs = run_with_trace(file)
+                if f"{module}.{function}" in called_funcs:
+                    matches.append(file)
+            else:
+                if find_function_usage_in_file(file, module, function):
+                    matches.append(file)
         except Exception as e:
             typer.echo(f"Error processing {file}: {e}")
 
