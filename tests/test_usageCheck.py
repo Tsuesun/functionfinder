@@ -5,11 +5,11 @@ from functionfinder.main import app
 
 runner = CliRunner()
 
-def write_script(path: str, content: str):
+def write_script(path: str, content: str) -> None:
     with open(path, "w") as f:
         f.write(content)
 
-def test_direct_usage_detection():
+def test_direct_usage_detection() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         script = os.path.join(tmpdir, "direct.py")
         write_script(script, "import os\nos.path.join('a', 'b')\n")
@@ -18,7 +18,7 @@ def test_direct_usage_detection():
         assert result.exit_code == 0
         assert "direct.py" in result.output
 
-def test_transitive_usage_detection():
+def test_transitive_usage_detection() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         script = os.path.join(tmpdir, "transitive.py")
         write_script(script, """
@@ -36,7 +36,7 @@ main()
         assert result.exit_code == 0
         assert "transitive.py" in result.output
 
-def test_no_usage():
+def test_no_usage() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         script = os.path.join(tmpdir, "no_use.py")
         write_script(script, "print('hello world')\n")
